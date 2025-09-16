@@ -39,3 +39,27 @@ temp/
 
 # React
 .eslintcache
+
+# Database
+*.db
+*.sqlite
+server/data/
+
+# API Keys and secrets - NEVER commit these
+**/api-keys.json
+**/credentials.json
+**/service-account.json
+server/.env
+
+# Test scripts (contain sensitive data)
+test-*.js
+check-*.js
+cleanup-*.js
+analyze-*.js
+extract-*.js
+add-*.js
+final-*.js
+
+# Scripts folder with potentially sensitive data
+scripts/
+server/src/scripts/

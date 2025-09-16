@@ -9,6 +9,14 @@ import passport from 'passport';
 import { setupGoogleStrategy } from './config/passport';
 import authRoutes from './routes/auth';
 import emailRoutes from './routes/emails';
+import contactRoutes from './routes/contacts';
+import purchaseRoutes from './routes/purchases';
+import folderRoutes from './routes/folders';
+import calendarRoutes from './routes/calendar';
+import analyzeRoutes from './routes/analyze';
+import testRoutes from './routes/test';
+import replyRoutes from './routes/reply';
+import newsletterRoutes from './routes/newsletters';
 import { errorHandler } from './middleware/errorHandler';
 
 export function createApp(): Application {
@@ -25,9 +33,9 @@ export function createApp(): Application {
     credentials: true,
   }) as any);
 
-  // Body parsing
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  // Body parsing with increased limit for large email batches
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
   app.use(cookieParser() as any);
 
   // Session configuration
@@ -51,6 +59,14 @@ export function createApp(): Application {
   // Routes
   app.use('/auth', authRoutes);
   app.use('/api/emails', emailRoutes);
+  app.use('/api/contacts', contactRoutes);
+  app.use('/api/purchases', purchaseRoutes);
+  app.use('/api/folders', folderRoutes);
+  app.use('/api/calendar', calendarRoutes);
+  app.use('/api/analysis', analyzeRoutes);
+  app.use('/api/test', testRoutes);
+  app.use('/api/reply', replyRoutes);
+  app.use('/api/newsletters', newsletterRoutes);
 
   // Health check
   app.get('/health', (_req, res) => {

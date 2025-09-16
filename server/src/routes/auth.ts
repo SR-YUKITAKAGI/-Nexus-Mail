@@ -13,6 +13,7 @@ router.get('/google',
       'https://www.googleapis.com/auth/gmail.send',
       'https://www.googleapis.com/auth/gmail.modify',
     ],
+    prompt: 'select_account', // Force account selection
   })
 );
 
@@ -21,7 +22,7 @@ router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   (_req, res) => {
     // Successful authentication, redirect to frontend
-    res.redirect(`${process.env.CORS_ORIGIN || 'http://localhost:3002'}/dashboard`);
+    res.redirect(`${process.env.CORS_ORIGIN || 'http://localhost:3000'}/dashboard`);
   }
 );
 
