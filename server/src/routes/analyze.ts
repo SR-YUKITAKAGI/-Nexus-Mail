@@ -49,7 +49,7 @@ router.get('/analyze-recent', requireAuth, async (req: any, res) => {
           email.id,
           email.to,
           undefined, // cc
-          req.user.id || 'default'
+          (req as any).user?.id || 'default'
         );
 
         // 分析結果にメール情報を追加

@@ -556,4 +556,73 @@ router.get('/analyzed', requireAuth, async (req: any, res: any) => {
   }
 });
 
+// Get AI-analyzed labels from emails
+router.get('/labels', requireAuth, async (req, res) => {
+  try {
+    const user = req.user as any;
+
+    // Get recent emails to extract labels from
+    const gmailService = new GmailService(user.accessToken, user.refreshToken);
+    const threads = await gmailService.getThreads(
+      `after:${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`,
+      500
+    );
+
+    // Extract labels from threads
+    const labelCounts = new Map<string, number>();
+
+    threads.forEach((thread: any) => {
+      // Extract from AI analysis if available
+      if (thread.analysis) {
+        if (thread.analysis.labels && Array.isArray(thread.analysis.labels)) {
+          thread.analysis.labels.forEach((label: string) => {
+            if (label && !['INBOX', 'SENT', 'DRAFT', 'SPAM', 'TRASH'].includes(label.toUpperCase())) {
+              labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
+            }
+          });
+        }
+
+        // Also count custom categories
+        if (thread.analysis.customCategory &&
+            thread.analysis.customCategory !== 'primary' &&
+            thread.analysis.customCategory !== 'newsletter' &&
+            thread.analysis.customCategory !== 'service_announcement') {
+          labelCounts.set(thread.analysis.customCategory,
+            (labelCounts.get(thread.analysis.customCategory) || 0) + 1);
+        }
+      }
+
+      // Extract from Gmail labels
+      if (thread.messages && thread.messages[0] && thread.messages[0].labels) {
+        thread.messages[0].labels.forEach((label: string) => {
+          // Skip system labels
+          if (!['INBOX', 'SENT', 'DRAFT', 'SPAM', 'TRASH', 'IMPORTANT', 'STARRED', 'UNREAD'].includes(label.toUpperCase())) {
+            labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
+          }
+        });
+      }
+
+      // Extract from category field
+      if (thread.category &&
+          thread.category !== 'primary' &&
+          thread.category !== 'newsletter' &&
+          thread.category !== 'service_announcement') {
+        const categoryLabel = thread.category.charAt(0).toUpperCase() + thread.category.slice(1);
+        labelCounts.set(categoryLabel, (labelCounts.get(categoryLabel) || 0) + 1);
+      }
+    });
+
+    // Convert to array and sort by count
+    const labels = Array.from(labelCounts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 15); // Top 15 labels
+
+    res.json({ labels });
+  } catch (error) {
+    console.error('Error fetching labels:', error);
+    res.status(500).json({ error: 'Failed to fetch labels' });
+  }
+});
+
 export default router;

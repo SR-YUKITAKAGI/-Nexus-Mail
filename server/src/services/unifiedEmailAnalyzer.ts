@@ -8,6 +8,10 @@ interface UnifiedAnalysisResult {
   priority: 'high' | 'medium' | 'low';
   isCreditCardStatement?: boolean;
 
+  // AI-generated labels for categorization
+  labels?: string[];
+  customCategory?: string;
+
   // Purchase data
   purchase?: {
     isPurchase: boolean;
@@ -262,6 +266,8 @@ export class UnifiedEmailAnalyzer {
         emailType: 'notification',
         category: 'Automated',
         priority: 'low',
+        labels: ['Automated', 'System'],
+        customCategory: 'Service Announce',
         summary: 'Automated notification email',
         discovery: {
           keyTopics: [],
@@ -279,6 +285,8 @@ export class UnifiedEmailAnalyzer {
         category: 'Finance',
         priority: 'high',
         isCreditCardStatement: true,
+        labels: ['Credit Card', 'Statement', 'Finance', 'Billing'],
+        customCategory: 'Credit Statement',
         summary: 'Credit card statement - contains aggregated purchases',
         discovery: {
           keyTopics: ['credit card', 'statement', 'billing'],
@@ -300,6 +308,8 @@ export class UnifiedEmailAnalyzer {
         emailType: 'newsletter',
         category: 'Marketing',
         priority: 'low',
+        labels: ['Newsletter', 'Promotion'],
+        customCategory: 'Mail Magazine',
         summary: 'Promotional/Marketing email',
         discovery: {
           keyTopics: ['promotion', 'marketing'],
@@ -358,6 +368,8 @@ Analyze and return ONLY valid JSON with this exact structure:
   "emailType": "purchase|newsletter|personal|work|notification|spam|other",
   "category": "Shopping|Business|Personal|Travel|Finance|Marketing|Support|Other",
   "priority": "high|medium|low",
+  "labels": ["array of 1-5 relevant labels/tags in English"],
+  "customCategory": "specific category if not in standard list or null",
 
   "purchase": {
     "isPurchase": boolean,
@@ -430,6 +442,8 @@ IMPORTANT RULES:
 5. Email categorization:
    - Determine primary purpose and type
    - Set priority based on content urgency
+   - Generate 1-5 relevant labels for organizing (e.g., "Invoice", "Shipping", "Meeting", "Project Alpha", "Q4 Report")
+   - If email doesn't fit standard categories, provide customCategory
 
 Return ONLY the JSON, no other text.`;
 
@@ -666,6 +680,32 @@ Return ONLY the JSON, no other text.`;
     // Only mark as purchase if there's strong evidence
     const isPurchase = hasPurchaseKeyword && isFromVendor;
 
+    // Generate dynamic labels based on content
+    const generateLabels = (): string[] => {
+      const labels: string[] = [];
+
+      if (isPurchase) {
+        labels.push('Purchase', 'Shopping');
+        if (subjectLower.includes('shipped') || subjectLower.includes('発送')) {
+          labels.push('Shipping');
+        }
+      } else if (subjectLower.includes('meeting') || subjectLower.includes('会議')) {
+        labels.push('Meeting', 'Calendar');
+      } else if (subjectLower.includes('project')) {
+        labels.push('Project', 'Work');
+      } else if (fromLower.includes('newsletter') || fromLower.includes('news')) {
+        labels.push('Newsletter', 'Updates');
+      }
+
+      // Add vendor/sender as label if recognizable
+      const vendor = from.split('@')[0]?.split('.')[0];
+      if (vendor && vendor.length > 2) {
+        labels.push(vendor.charAt(0).toUpperCase() + vendor.slice(1));
+      }
+
+      return labels.slice(0, 5); // Max 5 labels
+    };
+
     return {
       emailType: isPurchase ? 'purchase' :
                 random < 0.5 ? 'newsletter' :
@@ -674,6 +714,8 @@ Return ONLY the JSON, no other text.`;
                random < 0.3 ? 'Business' :
                random < 0.6 ? 'Personal' : 'Marketing',
       priority: random < 0.1 ? 'high' : random < 0.5 ? 'medium' : 'low',
+      labels: generateLabels(),
+      customCategory: isPurchase ? 'Online Shopping' : undefined,
 
       purchase: isPurchase ? {
         isPurchase: true,
